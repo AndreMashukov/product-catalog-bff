@@ -35,6 +35,18 @@ This repository contains the Serverless Framework configuration for the Product 
    
 > **Note**: Always specify both `--stage` and `--region` parameters to ensure consistent resource naming and cross-stack references.
 
+### Troubleshooting
+
+If you encounter deployment issues:
+
+1. **Permission Issues**: Ensure your AWS credentials have sufficient permissions to create resources like S3 buckets, CloudFormation stacks, Cognito User Pools, etc.
+
+2. **Deployment Bucket**: The standalone configurations are set to use Serverless Framework's default deployment bucket creation, which should work with standard AWS permissions.
+
+3. **Stack References**: If resources cannot be found between stacks, ensure you're deploying to the same region and using the same stage name across all deployments.
+
+4. **Verify Exports**: After deploying the Cognito and Event Hub resources, you can verify the CloudFormation exports in the AWS Console under CloudFormation → Exports.
+
 ### Resource References
 
 The main service references resources from the other stacks using CloudFormation outputs:

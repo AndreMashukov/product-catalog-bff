@@ -3,11 +3,12 @@ service: template-cognito-resources
 provider:
   name: aws
   runtime: nodejs16.x
-  deploymentBucket: 
-    name: my-template-sls-deploy-${opt:stage, 'dev'}-${opt:region, 'us-west-2'}
-  iam:
-    deploymentRole: arn:aws:iam::${aws:accountId}:role/template-cfn-exec-${opt:stage, 'dev'}
-  stackTags: ${file(serverless/tags.yml)}
+  # Let Serverless create a default deployment bucket
+  region: ${opt:region, 'us-west-2'}
+  # Using simple tags instead of reference
+  stackTags:
+    Service: template-cognito
+    Environment: ${opt:stage, 'dev'}
   logRetentionInDays: 3
   environment: 
     STAGE: ${opt:stage, 'dev'}
