@@ -3,6 +3,11 @@ role:
   statements:
     - ${file(serverless/dynamodb.yml):iamRoleStatements}
     - ${file(serverless/bus.yml):iamRoleStatements}
+<<<<<<< HEAD
+    - ${file(serverless/cognito.yml):iamRoleStatements}
+    - ${file(serverless/event-hub.yml):iamRoleStatements}
+=======
+>>>>>>> origin/main
     # - ${file(serverless/s3.yml):iamRoleStatements}
     # - ${file(serverless/secrets.yml):iamRoleStatements}
     # - ${file(serverless/kms.yml):iamRoleStatements}

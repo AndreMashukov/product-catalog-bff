@@ -41,12 +41,25 @@ functions:
       - sqs:
           arn:
             Fn::GetAtt: [ ListenerQueue, Arn ]
+<<<<<<< HEAD
+          functionResponseType: ReportBatchItemFailures
+      - stream:
+          type: kinesis
+          arn: ${self:provider.environment.STREAM_ARN}
+          batchSize: 100
+          startingPosition: TRIM_HORIZON
+          filterPatterns:
+            - data:
+                type:
+                  - prefix: 'product-'
+=======
     #       functionResponseType: ReportBatchItemFailures
     #   - stream:
     #       type: kinesis
     #       arn: ${self:provider.environment.STREAM_ARN}
     #       batchSize: 100
     #       startingPosition: TRIM_HORIZON
+>>>>>>> origin/main
     #       filterPatterns:
     #         - data:
     #             type:
@@ -68,6 +81,11 @@ resources:
   - ${file(serverless/apig.yml):resources}
   - ${file(serverless/sqs-listener.yml):resources}
   - ${file(serverless/dynamodb.yml):resources}
+<<<<<<< HEAD
+  - ${file(serverless/cognito.yml):resources}
+  - ${file(serverless/event-hub.yml):resources}
+=======
+>>>>>>> origin/main
   # - ${file(serverless/s3.yml):resources}
   # - ${file(serverless/sns.yml):resources}
   # - ${file(serverless/sqs-trigger.yml):resources}

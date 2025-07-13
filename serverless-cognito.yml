@@ -1,0 +1,91 @@
+service: template-cognito-resources
+
+provider:
+  name: aws
+  runtime: nodejs16.x
+  # Let Serverless create a default deployment bucket
+  region: ${opt:region, 'us-west-2'}
+  # Using simple tags instead of reference
+  stackTags:
+    Service: template-cognito
+    Environment: ${opt:stage, 'dev'}
+  logRetentionInDays: 3
+  environment: 
+    STAGE: ${opt:stage, 'dev'}
+
+params:
+  np:
+    debug: '*'
+    account: np
+    logRetentionInDays: 3
+  prd:
+    debug: ''
+    account: prod
+    logRetentionInDays: 30
+
+custom:
+  partition: aws
+  org: my
+  subsys: template
+
+plugins:
+  - serverless-aws-describe-plugin
+
+resources:
+  Conditions:
+    CreateCognitoResources: 
+      Fn::Equals:
+        - true
+        - true
+
+  Resources:
+    CognitoUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: ${self:custom.subsys}-user-pool-${opt:stage}
+        AutoVerifiedAttributes:
+          - email
+        MfaConfiguration: "OFF"
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireLowercase: true
+            RequireNumbers: true
+            RequireSymbols: true
+            RequireUppercase: true
+            TemporaryPasswordValidityDays: 7
+        Schema:
+          - Name: email
+            AttributeDataType: String
+            Mutable: true
+            Required: true
+          - Name: name
+            AttributeDataType: String
+            Mutable: true
+            Required: true
+
+    UserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        UserPoolId: !Ref CognitoUserPool
+        ClientName: ${self:custom.subsys}-app-client-${opt:stage}
+        GenerateSecret: false
+        ExplicitAuthFlows:
+          - ALLOW_USER_SRP_AUTH
+          - ALLOW_REFRESH_TOKEN_AUTH
+          - ALLOW_USER_PASSWORD_AUTH
+        PreventUserExistenceErrors: ENABLED
+
+  Outputs:
+    userPoolId:
+      Value: !Ref CognitoUserPool
+      Export:
+        Name: ${self:custom.subsys}-cognito-resources-${opt:stage}-userPoolId
+    userPoolArn:
+      Value: !GetAtt CognitoUserPool.Arn
+      Export:
+        Name: ${self:custom.subsys}-cognito-resources-${opt:stage}-userPoolArn
+    userPoolClientId:
+      Value: !Ref UserPoolClient
+      Export:
+        Name: ${self:custom.subsys}-cognito-resources-${opt:stage}-userPoolClientId

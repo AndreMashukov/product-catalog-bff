@@ -1,0 +1,70 @@
+resources:
+  Conditions:
+    CreateEventHubResources: 
+      Fn::Equals:
+        - false
+        - true
+  
+  Resources:
+    EventBus:
+      Type: AWS::Events::EventBus
+      Condition: CreateEventHubResources
+      Properties:
+        Name: ${self:custom.subsys}-bus-${opt:stage}
+    
+    # EventBridge Rule example - you can customize this based on your needs
+    ProductCatalogRule:
+      Type: AWS::Events::Rule
+      Condition: CreateEventHubResources
+      Properties:
+        EventBusName: !Ref EventBus
+        Name: ${self:custom.subsys}-product-catalog-rule-${opt:stage}
+        Description: "Rule for product catalog events"
+        EventPattern:
+          source:
+            - "product-catalog"
+          detail-type:
+            - "ProductCreated"
+            - "ProductUpdated"
+            - "ProductDeleted"
+            - "VariantCreated"
+            - "VariantUpdated"
+            - "VariantDeleted"
+
+    KinesisStream:
+      Type: AWS::Kinesis::Stream
+      Condition: CreateEventHubResources
+      Properties:
+        Name: ${self:custom.subsys}-stream-${opt:stage}
+        ShardCount: 1
+        RetentionPeriodHours: 24
+
+  Outputs:
+    busName:
+      Value: !Ref EventBus
+      Export:
+        Name: ${self:custom.subsys}-event-hub-${opt:stage}.busName
+    busArn:
+      Value: !GetAtt EventBus.Arn
+      Export:
+        Name: ${self:custom.subsys}-event-hub-${opt:stage}.busArn
+    stream1Arn:
+      Value: !GetAtt KinesisStream.Arn
+      Export:
+        Name: ${self:custom.subsys}-event-hub-${opt:stage}.stream1Arn
+
+# IAM role statements to be used in the main serverless.yml
+iamRoleStatements:
+  - Effect: Allow
+    Action:
+      - events:PutEvents
+    Resource: ${self:provider.environment.BUS_ARN}
+  - Effect: Allow
+    Action:
+      - kinesis:PutRecord
+      - kinesis:PutRecords
+      - kinesis:GetRecords
+      - kinesis:GetShardIterator
+      - kinesis:DescribeStream
+      - kinesis:ListShards
+    Resource: ${self:provider.environment.STREAM_ARN}
