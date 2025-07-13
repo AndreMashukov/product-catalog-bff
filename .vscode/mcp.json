@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "serverless": {
+      "command": "serverless",
+      "args": ["mcp", "--transport", "stdio", "--stage", "np", "--region", "us-west-2"]
+    }
+  }
+}
