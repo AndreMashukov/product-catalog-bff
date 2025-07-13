@@ -73,12 +73,12 @@ resources:
     busName:
       Value: !Ref EventBus
       Export:
-        Name: ${self:custom.subsys}-event-hub-${opt:stage}.busName
+        Name: ${self:custom.subsys}-event-hub-${opt:stage}-busName
     busArn:
       Value: !GetAtt EventBus.Arn
       Export:
-        Name: ${self:custom.subsys}-event-hub-${opt:stage}.busArn
+        Name: ${self:custom.subsys}-event-hub-${opt:stage}-busArn
     stream1Arn:
       Value: !GetAtt KinesisStream.Arn
       Export:
-        Name: ${self:custom.subsys}-event-hub-${opt:stage}.stream1Arn
+        Name: ${self:custom.subsys}-event-hub-${opt:stage}-stream1Arn

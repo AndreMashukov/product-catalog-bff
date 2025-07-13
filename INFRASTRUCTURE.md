@@ -51,10 +51,10 @@ If you encounter deployment issues:
 
 The main service references resources from the other stacks using CloudFormation outputs:
 
-- **Cognito User Pool**: `${cf(us-west-2):${self:custom.subsys}-cognito-resources-${opt:stage}.userPoolArn}`
-- **EventBridge Bus Name**: `${cf:${self:custom.subsys}-event-hub-${opt:stage}.busName}`
-- **EventBridge Bus ARN**: `${cf:${self:custom.subsys}-event-hub-${opt:stage}.busArn}`
-- **Kinesis Stream ARN**: `${cf:${self:custom.subsys}-event-hub-${opt:stage}.stream1Arn}`
+- **Cognito User Pool**: `${cf(us-west-2):${self:custom.subsys}-cognito-resources-${opt:stage}-userPoolArn}`
+- **EventBridge Bus Name**: `${cf:${self:custom.subsys}-event-hub-${opt:stage}-busName}`
+- **EventBridge Bus ARN**: `${cf:${self:custom.subsys}-event-hub-${opt:stage}-busArn}`
+- **Kinesis Stream ARN**: `${cf:${self:custom.subsys}-event-hub-${opt:stage}-stream1Arn}`
 
 ## Local Development
 

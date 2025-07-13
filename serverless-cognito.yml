@@ -80,12 +80,12 @@ resources:
     userPoolId:
       Value: !Ref CognitoUserPool
       Export:
-        Name: ${self:custom.subsys}-cognito-resources-${opt:stage}.userPoolId
+        Name: ${self:custom.subsys}-cognito-resources-${opt:stage}-userPoolId
     userPoolArn:
       Value: !GetAtt CognitoUserPool.Arn
       Export:
-        Name: ${self:custom.subsys}-cognito-resources-${opt:stage}.userPoolArn
+        Name: ${self:custom.subsys}-cognito-resources-${opt:stage}-userPoolArn
     userPoolClientId:
       Value: !Ref UserPoolClient
       Export:
-        Name: ${self:custom.subsys}-cognito-resources-${opt:stage}.userPoolClientId
+        Name: ${self:custom.subsys}-cognito-resources-${opt:stage}-userPoolClientId
