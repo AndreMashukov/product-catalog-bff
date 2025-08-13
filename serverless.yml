@@ -2,9 +2,9 @@ service: ${self:custom.subsys}-product-catalog-bff
 
 provider:
   name: aws
-  deploymentBucket: ${file(serverless/cfn.yml):deploymentBucket}
+  # deploymentBucket: ${file(serverless/cfn.yml):deploymentBucket}
   iam:
-    deploymentRole: ${file(serverless/cfn.yml):deploymentRole}
+    # deploymentRole: ${file(serverless/cfn.yml):deploymentRole}
     role: ${file(serverless/iam.yml):role}
   stackTags: ${file(serverless/tags.yml)}
   runtime: nodejs16.x
@@ -72,8 +72,8 @@ resources:
   - ${file(serverless/apig.yml):resources}
   - ${file(serverless/sqs-listener.yml):resources}
   - ${file(serverless/dynamodb.yml):resources}
-  - ${file(serverless/cognito.yml):resources}
-  - ${file(serverless/event-hub.yml):resources}
+  # - ${file(serverless/cognito.yml):resources}  # Managed by separate stack
+  # - ${file(serverless/event-hub.yml):resources}  # Managed by separate stack
   # - ${file(serverless/s3.yml):resources}
   # - ${file(serverless/sns.yml):resources}
   # - ${file(serverless/sqs-trigger.yml):resources}

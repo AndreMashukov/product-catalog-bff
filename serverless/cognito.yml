@@ -1,14 +1,7 @@
 resources:
-  Conditions:
-    CreateCognitoResources: 
-      Fn::Equals:
-        - false
-        - true
-
   Resources:
     CognitoUserPool:
       Type: AWS::Cognito::UserPool
-      Condition: CreateCognitoResources
       Properties:
         UserPoolName: ${self:custom.subsys}-user-pool-${opt:stage}
         AutoVerifiedAttributes:
@@ -34,7 +27,6 @@ resources:
 
     UserPoolClient:
       Type: AWS::Cognito::UserPoolClient
-      Condition: CreateCognitoResources
       Properties:
         UserPoolId: !Ref CognitoUserPool
         ClientName: ${self:custom.subsys}-app-client-${opt:stage}
@@ -49,15 +41,15 @@ resources:
     userPoolId:
       Value: !Ref CognitoUserPool
       Export:
-        Name: ${self:custom.subsys}-cognito-resources-${opt:stage}.userPoolId
+        Name: ${self:custom.subsys}-cognito-resources-${opt:stage}-userPoolId
     userPoolArn:
       Value: !GetAtt CognitoUserPool.Arn
       Export:
-        Name: ${self:custom.subsys}-cognito-resources-${opt:stage}.userPoolArn
+        Name: ${self:custom.subsys}-cognito-resources-${opt:stage}-userPoolArn
     userPoolClientId:
       Value: !Ref UserPoolClient
       Export:
-        Name: ${self:custom.subsys}-cognito-resources-${opt:stage}.userPoolClientId
+        Name: ${self:custom.subsys}-cognito-resources-${opt:stage}-userPoolClientId
 
 # IAM role statements to be used in the main serverless.yml
 iamRoleStatements:

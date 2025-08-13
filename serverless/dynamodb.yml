@@ -11,19 +11,19 @@ tableStreamArn:
     # Fn::GetAtt: [ EntitiesTable, StreamArn ]
 
 iamRoleStatements:
-  Effect: Allow
-  Action:
-    - dynamodb:Query
-    - dynamodb:GetItem
-    - dynamodb:UpdateItem
-    - dynamodb:PutItem
-  Resource:
-    - ${self:custom.tableArn}
-    - Fn::Join:
-        - '/'
-        - - ${self:custom.tableArn}
-          - index
-          - gsi1        
+  - Effect: Allow
+    Action:
+      - dynamodb:Query
+      - dynamodb:GetItem
+      - dynamodb:UpdateItem
+      - dynamodb:PutItem
+    Resource:
+      - ${self:custom.tableArn}
+      - Fn::Join:
+          - '/'
+          - - ${self:custom.tableArn}
+            - index
+            - gsi1        
 
 filterPatterns:
   - eventName: [ INSERT, MODIFY ]

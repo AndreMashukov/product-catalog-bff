@@ -1,10 +1,41 @@
 role:
-  permissionsBoundary: arn:${self:custom.partition}:iam::${aws:accountId}:policy/${self:custom.subsys}-boundary-${opt:stage}
+  # permissionsBoundary: arn:${self:custom.partition}:iam::${aws:accountId}:policy/${self:custom.subsys}-boundary-${opt:stage}
   statements:
-    - ${file(serverless/dynamodb.yml):iamRoleStatements}
-    - ${file(serverless/bus.yml):iamRoleStatements}
-    - ${file(serverless/cognito.yml):iamRoleStatements}
-    - ${file(serverless/event-hub.yml):iamRoleStatements}
-    # - ${file(serverless/s3.yml):iamRoleStatements}
-    # - ${file(serverless/secrets.yml):iamRoleStatements}
-    # - ${file(serverless/kms.yml):iamRoleStatements}
+    # DynamoDB permissions
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:GetItem
+        - dynamodb:UpdateItem
+        - dynamodb:PutItem
+      Resource:
+        - ${self:custom.tableArn}
+        - Fn::Join:
+            - '/'
+            - - ${self:custom.tableArn}
+              - index
+              - gsi1
+    # EventBridge permissions
+    - Effect: Allow
+      Action:
+        - events:PutEvents
+      Resource: ${self:provider.environment.BUS_ARN}
+    # Cognito permissions
+    - Effect: Allow
+      Action:
+        - cognito-idp:AdminInitiateAuth
+        - cognito-idp:AdminCreateUser
+        - cognito-idp:AdminSetUserPassword
+        - cognito-idp:AdminGetUser
+        - cognito-idp:AdminUpdateUserAttributes
+      Resource: ${self:provider.environment.USER_POOL}
+    # Kinesis permissions
+    - Effect: Allow
+      Action:
+        - kinesis:PutRecord
+        - kinesis:PutRecords
+        - kinesis:GetRecords
+        - kinesis:GetShardIterator
+        - kinesis:DescribeStream
+        - kinesis:ListShards
+      Resource: ${self:provider.environment.STREAM_ARN}
