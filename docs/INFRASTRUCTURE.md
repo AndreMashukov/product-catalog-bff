@@ -31,9 +31,17 @@ This repository contains the Serverless Framework configuration for the Product 
 3. **Deploy Main Product Catalog BFF Service**:
    ```bash
    sls deploy --stage dev --region us-west-2
+   export NODE_OPTIONS="--openssl-legacy-provider" && sls deploy --stage dev --region us-west-2
    ```
    
 > **Note**: Always specify both `--stage` and `--region` parameters to ensure consistent resource naming and cross-stack references.
+
+### Available Stages
+
+The configuration supports the following stages:
+- `dev` - Development environment (debug enabled, 3-day log retention)
+- `np` - Non-production environment (debug enabled, 3-day log retention)  
+- `prd` - Production environment (debug disabled, 30-day log retention)
 
 ### Troubleshooting
 

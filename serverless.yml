@@ -2,9 +2,9 @@ service: ${self:custom.subsys}-product-catalog-bff
 
 provider:
   name: aws
-  deploymentBucket: ${file(serverless/cfn.yml):deploymentBucket}
+  # deploymentBucket: ${file(serverless/cfn.yml):deploymentBucket}
   iam:
-    deploymentRole: ${file(serverless/cfn.yml):deploymentRole}
+    # deploymentRole: ${file(serverless/cfn.yml):deploymentRole}
     role: ${file(serverless/iam.yml):role}
   stackTags: ${file(serverless/tags.yml)}
   runtime: nodejs16.x
@@ -41,7 +41,6 @@ functions:
       - sqs:
           arn:
             Fn::GetAtt: [ ListenerQueue, Arn ]
-<<<<<<< HEAD
           functionResponseType: ReportBatchItemFailures
       - stream:
           type: kinesis
@@ -52,14 +51,6 @@ functions:
             - data:
                 type:
                   - prefix: 'product-'
-=======
-    #       functionResponseType: ReportBatchItemFailures
-    #   - stream:
-    #       type: kinesis
-    #       arn: ${self:provider.environment.STREAM_ARN}
-    #       batchSize: 100
-    #       startingPosition: TRIM_HORIZON
->>>>>>> origin/main
     #       filterPatterns:
     #         - data:
     #             type:
@@ -81,11 +72,8 @@ resources:
   - ${file(serverless/apig.yml):resources}
   - ${file(serverless/sqs-listener.yml):resources}
   - ${file(serverless/dynamodb.yml):resources}
-<<<<<<< HEAD
-  - ${file(serverless/cognito.yml):resources}
-  - ${file(serverless/event-hub.yml):resources}
-=======
->>>>>>> origin/main
+  # - ${file(serverless/cognito.yml):resources}  # Managed by separate stack
+  # - ${file(serverless/event-hub.yml):resources}  # Managed by separate stack
   # - ${file(serverless/s3.yml):resources}
   # - ${file(serverless/sns.yml):resources}
   # - ${file(serverless/sqs-trigger.yml):resources}
