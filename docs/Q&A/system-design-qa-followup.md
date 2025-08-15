@@ -376,7 +376,7 @@ Time: 0min ──→ 1min ──→ 2min ──→ 3min ──→ 4min
                │         │         │         │
 Load:     0 ──→ 10K ──→ 30K ──→ 50K ──→ 55K events/min
                │         │         │         │
-Lambda        │         │         │         │
+Lambda         │         │         │         │
 Instances: 0 ──→ 167 ──→ 500 ──→ 833 ──→ 916 concurrent
                │         │         │         │
 Status:    ✅ OK ──→ ✅ OK ──→ ⚠️ Warning ──→ ❌ Throttling

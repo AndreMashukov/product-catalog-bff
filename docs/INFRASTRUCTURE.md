@@ -47,13 +47,15 @@ The configuration supports the following stages:
 
 If you encounter deployment issues:
 
-1. **Permission Issues**: Ensure your AWS credentials have sufficient permissions to create resources like S3 buckets, CloudFormation stacks, Cognito User Pools, etc.
+1. **ESBuild Conflict**: If you encounter "Serverless now includes ESBuild and supports Typescript out-of-the-box. But this conflicts with the plugin 'serverless-webpack'" error, ensure the `build.esbuild: false` configuration is present in your `serverless.yml` file. This disables the built-in ESBuild support to allow continued use of the webpack plugin.
 
-2. **Deployment Bucket**: The standalone configurations are set to use Serverless Framework's default deployment bucket creation, which should work with standard AWS permissions.
+2. **Permission Issues**: Ensure your AWS credentials have sufficient permissions to create resources like S3 buckets, CloudFormation stacks, Cognito User Pools, etc.
 
-3. **Stack References**: If resources cannot be found between stacks, ensure you're deploying to the same region and using the same stage name across all deployments.
+3. **Deployment Bucket**: The standalone configurations are set to use Serverless Framework's default deployment bucket creation, which should work with standard AWS permissions.
 
-4. **Verify Exports**: After deploying the Cognito and Event Hub resources, you can verify the CloudFormation exports in the AWS Console under CloudFormation → Exports.
+4. **Stack References**: If resources cannot be found between stacks, ensure you're deploying to the same region and using the same stage name across all deployments.
+
+5. **Verify Exports**: After deploying the Cognito and Event Hub resources, you can verify the CloudFormation exports in the AWS Console under CloudFormation → Exports.
 
 ### Resource References
 
