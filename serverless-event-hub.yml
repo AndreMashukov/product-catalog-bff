@@ -54,13 +54,9 @@ resources:
         EventPattern:
           source:
             - "product-catalog"
-          detail-type:
-            - "ProductCreated"
-            - "ProductUpdated"
-            - "ProductDeleted"
-            - "VariantCreated"
-            - "VariantUpdated"
-            - "VariantDeleted"
+          detail:
+            eventType:
+              - prefix: "product-"
 
     KinesisStream:
       Type: AWS::Kinesis::Stream

@@ -6,9 +6,10 @@
 The Product Catalog BFF uses the following AWS services:
 - **DynamoDB**: Primary storage (Global Table: `template-product-catalog-bff-{stage}-entities`)
 - **API Gateway**: REST API endpoints with Cognito authentication
-- **Lambda Functions**: Serverless handlers for REST, trigger, and listener functions
-- **EventBridge + Kinesis**: Event-driven architecture for real-time updates
+- **Lambda Functions**: Serverless handlers for REST API operations
 - **Cognito**: User authentication and authorization
+
+For event-driven architecture and real-time updates, see [EVENTS.md](./EVENTS.md).
 
 ### Getting Started with AWS CLI
 
@@ -241,24 +242,7 @@ aws logs filter-log-events \
   --region us-west-2
 ```
 
-#### Event Monitoring
 
-```bash
-# List EventBridge rules
-aws events list-rules \
-  --event-bus-name template-event-hub-dev-bus \
-  --region us-west-2
-
-# Describe Kinesis stream
-aws kinesis describe-stream \
-  --stream-name template-event-hub-dev-stream1 \
-  --region us-west-2
-
-# Get stream records
-aws kinesis get-records \
-  --shard-iterator <shard-iterator> \
-  --region us-west-2
-```
 
 #### API Gateway Management
 
@@ -400,4 +384,9 @@ aws dynamodb describe-table \
   --table-name template-product-catalog-bff-dev-entities \
   --region us-west-2 \
   --query "Table.{Name:TableName,Status:TableStatus,ItemCount:ItemCount,GSI:GlobalSecondaryIndexes[].{Name:IndexName,Status:IndexStatus}}"
-``` 
+```
+
+## Related Documentation
+
+- [EVENTS.md](./EVENTS.md) - Event management, EventBridge, and Kinesis operations
+- [INFRASTRUCTURE.md](./INFRASTRUCTURE.md) - Infrastructure setup and deployment 

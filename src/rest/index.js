@@ -2,11 +2,11 @@ import Connector from '../connectors/dynamodb';
 import ProductModel from '../models/product';
 import ProductVariantModel from '../models/product-variant';
 import {
-  queryProducts, getProduct, saveProduct, deleteProduct, 
+  queryProducts, getProduct, saveProduct, deleteProduct,
   updateProductStock, updateProductPrice, getProductsByCategory,
 } from './routes/product';
 import {
-  saveProductVariant, deleteProductVariant, 
+  saveProductVariant, deleteProductVariant,
   updateVariantStock, updateVariantPrice,
 } from './routes/product-variant';
 import {
@@ -72,7 +72,7 @@ api.use(models);
     api.delete('/products/:id', /* forRole('admin'), */ deleteProduct);
     api.patch('/products/:id/stock', /* forRole('manager'), */ updateProductStock);
     api.patch('/products/:id/price', /* forRole('manager'), */ updateProductPrice);
-    
+
     // Product variant routes
     api.put('/products/:id/variants/:variantId', /* forRole('manager'), */ saveProductVariant);
     api.delete('/products/:id/variants/:variantId', /* forRole('admin'), */ deleteProductVariant);

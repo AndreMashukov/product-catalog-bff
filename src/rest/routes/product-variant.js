@@ -12,4 +12,4 @@ export const updateVariantStock = (req, res) => req.namespace.models.productVari
 
 export const updateVariantPrice = (req, res) => req.namespace.models.productVariant
   .updatePrice(req.params, req.body.price)
-  .then(() => res.status(200).json({ message: 'Product variant price updated successfully' })); 
+  .then(() => res.status(200).json({ message: 'Product variant price updated successfully' }));

@@ -31,8 +31,8 @@ resources:
         EventBusName: ${cf:${self:custom.subsys}-event-hub-${opt:stage}.busName}
         EventPattern: 
           detail:
-            type:
-              - prefix: thing-
+            eventType:
+              - prefix: product-
         State: ENABLED
         Targets: 
           - Id: Channel

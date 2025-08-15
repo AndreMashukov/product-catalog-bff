@@ -25,7 +25,7 @@ class Model {
 
   save({ id, variantId }, variant) {
     const timestamp = now();
-    
+
     // Validate required fields for product variant
     if (!variant.sku || !variant.price) {
       throw new Error('Variant SKU and price are required');
@@ -103,4 +103,4 @@ class Model {
   }
 }
 
-export default Model; 
+export default Model;

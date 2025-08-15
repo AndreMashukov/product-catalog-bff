@@ -33,10 +33,12 @@ class Model {
     this.claims = claims;
   }
 
-  query({ last, limit, category, status, search, sortBy = 'timestamp' }) {
+  query({
+    last, limit, category, status, search, sortBy = 'timestamp',
+  }) {
     const keyName = category ? 'category' : 'discriminator';
     const keyValue = category || DISCRIMINATOR;
-    
+
     return this.connector
       .query({
         index: category ? 'gsi2' : 'gsi1',
@@ -51,7 +53,7 @@ class Model {
         ...response,
         data: await Promise.all(response.data
           .filter(deletedFilter)
-          .filter(p => !status || p.status === status)
+          .filter((p) => !status || p.status === status)
           .map((e) => MAPPER(e))),
       }));
   }
@@ -184,24 +186,49 @@ const STATUS_EVENT_MAP = {
 
 const EVENT_STATUS_MAP = invert(STATUS_EVENT_MAP);
 
-export const toUpdateRequest = (uow) => ({
-  Key: {
-    pk: uow.event.product.id,
-    sk: DISCRIMINATOR,
-  },
-  ...updateExpression({
-    ...uow.event.product,
-    status: EVENT_STATUS_MAP[uow.event.type] || uow.event.product.status,
-    discriminator: DISCRIMINATOR,
-    lastModifiedBy: uow.event.product.lastModifiedBy || 'system',
-    timestamp: uow.event.timestamp,
-    deleted: uow.event.type === 'product-deleted' ? true : null,
-    latched: true,
-    ttl: ttl(uow.event.timestamp, 365),
-    awsregion: process.env.AWS_REGION,
-  }),
-  ...timestampCondition(),
-});
+export const toUpdateRequest = (uow) => {
+  // Handle different event structures:
+  // 1. Standard structure: uow.event.product (for product-* events)
+  // 2. Legacy structure: uow.event.data (for thing-product events)
+  const productData = uow.event.product || uow.event.data || {};
+  // For ID resolution, prioritize the event-level productId, then data.pk, then data.id
+  const productId = uow.event.productId || productData.pk || productData.id;
+
+  // Convert timestamp to numeric format if it's a string
+  let eventTimestamp = uow.event.timestamp;
+  if (typeof eventTimestamp === 'string') {
+    eventTimestamp = new Date(eventTimestamp).getTime();
+  }
+
+  // Determine status from event type or existing status
+  let { status } = productData;
+  if (uow.event.type === 'thing-product' && uow.event.eventType) {
+    // For thing-product events, use eventType to determine status
+    status = EVENT_STATUS_MAP[uow.event.eventType] || productData.status;
+  } else {
+    // For product-* events, use the event type
+    status = EVENT_STATUS_MAP[uow.event.type] || productData.status;
+  }
+
+  return {
+    Key: {
+      pk: productId,
+      sk: DISCRIMINATOR,
+    },
+    ...updateExpression({
+      ...productData,
+      status,
+      discriminator: DISCRIMINATOR,
+      lastModifiedBy: productData.lastModifiedBy || 'system',
+      timestamp: eventTimestamp,
+      deleted: uow.event.type === 'product-deleted' ? true : null,
+      latched: true,
+      ttl: ttl(eventTimestamp, 365),
+      awsregion: process.env.AWS_REGION || productData.awsregion,
+    }),
+    ...timestampCondition(),
+  };
+};
 
 export const toEvent = async (uow) => {
   const data = uow.event.raw.new || /* istanbul ignore next */ uow.event.raw.old;
@@ -215,4 +242,4 @@ export const toEvent = async (uow) => {
     product,
     raw: undefined,
   };
-}; 
+};

@@ -49,12 +49,8 @@ functions:
           startingPosition: TRIM_HORIZON
           filterPatterns:
             - data:
-                type:
+                eventType:
                   - prefix: 'product-'
-    #       filterPatterns:
-    #         - data:
-    #             type:
-    #                - prefix: 'thing-'
   trigger:
     handler: src/trigger/index.handle
     events:

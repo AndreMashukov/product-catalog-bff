@@ -27,4 +27,4 @@ export const updateProductPrice = (req, res) => req.namespace.models.product
 export const getProductsByCategory = (req, res) => req.namespace.models.product
   .query({ ...req.params, ...req.query, category: req.params.category })
   .then((response) => res.status(200)
-    .json(response)); 
+    .json(response));
