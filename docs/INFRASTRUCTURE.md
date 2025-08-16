@@ -81,3 +81,8 @@ Run tests with:
 ```bash
 npm test
 ```
+
+## Additional Documentation
+
+- **[EVENTS.md](./EVENTS.md)**: Contains AWS CLI commands for event management, monitoring, and troubleshooting with current deployed resource names
+- **[API.md](./API.md)**: API endpoint documentation and management commands

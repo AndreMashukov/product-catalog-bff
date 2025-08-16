@@ -4,6 +4,47 @@
 
 The Product Catalog BFF uses an event-driven architecture for real-time updates and cross-service communication. This document provides AWS CLI commands and procedures for managing events, EventBridge, and Kinesis streams.
 
+## ⚠️ Critical Event Structure Notes
+
+**Recently Discovered Issues (Aug 2025)**:
+
+### 1. Field Name Differences
+Different entry points require different field names:
+- **EventBridge Events**: Use `"eventType"` for routing
+- **Lambda Direct Invocations**: Use `"type"` for processing
+
+### 2. Timestamp Condition Failures
+**Problem**: DynamoDB conditional check failures when using old timestamps
+**Root Cause**: The system uses `ConditionExpression: "attribute_not_exists(#timestamp) OR #timestamp < :timestamp"` to prevent overwriting records with stale data
+**Solution**: Always use current timestamps for testing
+
+**Quick Fix Reference**:
+```bash
+# ✅ Working Lambda direct invocation with current timestamp:
+aws lambda invoke \
+  --function-name template-product-catalog-bff-dev-listener \
+  --payload "{\"Records\":[{\"eventSource\":\"aws:sqs\",\"body\":\"{\\\"type\\\":\\\"product-published\\\",\\\"productId\\\":\\\"test-124\\\",\\\"timestamp\\\":$(date +%s)000,\\\"product\\\":{\\\"name\\\":\\\"Test Product\\\",\\\"sku\\\":\\\"TST-124\\\",\\\"price\\\":19.99}}\"}]}" \
+  --cli-binary-format raw-in-base64-out \
+  --region us-west-2 \
+  response.json
+
+# ❌ WRONG - Using old timestamp (will fail conditional check):
+aws lambda invoke \
+  --payload '{"Records":[{"eventSource":"aws:sqs","body":"{\"type\":\"product-published\",\"productId\":\"test-124\",\"timestamp\":1692097847000,..."}]}'
+```
+
+**Debugging Tips**:
+1. Check DynamoDB metrics for `ConditionalCheckFailedRequests` to identify timestamp conflicts
+2. Use MCP serverless tools for comprehensive diagnostics:
+   ```bash
+   # Get Lambda function diagnostics with error logs
+   # (Replace with your actual MCP command)
+   # mcp aws-lambda-info --function-names template-product-catalog-bff-dev-listener
+   
+   # Get DynamoDB table metrics including conditional check failures  
+   # mcp aws-dynamodb-info --table-names template-product-catalog-bff-dev-entities
+   ```
+
 ### Event Infrastructure
 
 The event system consists of:
@@ -21,21 +62,23 @@ aws events list-rules \
   --event-bus-name template-bus-dev \
   --region us-west-2
 
-# template-product-catalog-bff-dev-EventRule-pS3DbAigmcQW
-# template-product-catalog-rule-dev
+# Current deployed rules:
+# template-product-catalog-bff-dev-EventRule-lq1M5nJakNuC (main service rule)
+# template-product-catalog-rule-dev (event hub rule)
 
-# Get details of a specific rule
+# Get details of the main service rule
 aws events describe-rule \
-  --name template-product-catalog-bff-dev-EventRule-pS3DbAigmcQW \
+  --name template-product-catalog-bff-dev-EventRule-lq1M5nJakNuC \
   --event-bus-name template-bus-dev \
   --region us-west-2
 
-# List targets for a rule
+# List targets for the main service rule
 aws events list-targets-by-rule \
-  --rule template-product-catalog-bff-dev-EventRule-pS3DbAigmcQW \
+  --rule template-product-catalog-bff-dev-EventRule-lq1M5nJakNuC \
   --event-bus-name template-bus-dev \
   --region us-west-2
 
+# Expected target output:
 # {
 #     "Targets": [
 #         {
@@ -46,8 +89,8 @@ aws events list-targets-by-rule \
 #     ]
 # }
 
-# purge queue
-aws aws sqs purge-queue --queue-url https://sqs.us-west-2.amazonaws.com/579273601730/template-product-catalog-bff-dev-listener
+# Purge SQS queue
+aws sqs purge-queue --queue-url https://sqs.us-west-2.amazonaws.com/579273601730/template-product-catalog-bff-dev-listener --region us-west-2
 
 
 # Put a test event (WORKING - includes required 'eventType' field)
@@ -70,32 +113,46 @@ aws events put-events \
     ]
 }
 
-# Test event for product creation 
+TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ) && \
+UNIX_TIMESTAMP=$(date +%s)000 && \
 aws events put-events \
-  --entries '[{
-    "Source": "product-catalog.test",
-    "DetailType": "Product Created",
-    "Detail": "{\"eventType\":\"product-published\",\"productId\":\"prod-001\",\"timestamp\":\"2024-01-01T12:00:00Z\",\"data\":{\"pk\":\"prod-001\",\"sk\":\"product\",\"awsregion\":\"us-west-2\",\"brand\":\"TechAudio\",\"category\":\"electronics\",\"description\":\"Premium noise-cancelling headphones with 30-hour battery life\",\"dimensions\":{\"height\":8,\"length\":20,\"width\":18},\"discriminator\":\"product\",\"images\":[\"https://example.com/headphones-1.jpg\"],\"lastModifiedBy\":\"f871a310-5051-7002-7c51-bb90ffd7a3e2\",\"name\":\"Wireless Bluetooth Headphones\",\"price\":299.99,\"sku\":\"WBH-2024-001\",\"status\":\"active\",\"stockQuantity\":100,\"tags\":[\"wireless\",\"bluetooth\",\"noise-cancelling\"],\"weight\":0.25}}",
-    "EventBusName": "template-bus-dev"
-  }]' \
+  --entries "[{
+    \"Source\": \"product-catalog.bff\",
+    \"DetailType\": \"Product Published\",
+    \"Detail\": \"{\\\"eventType\\\":\\\"product-published\\\",\\\"productId\\\":\\\"test-128\\\",\\\"timestamp\\\":\\\"${TIMESTAMP}\\\",\\\"product\\\":{\\\"id\\\":\\\"test-128\\\",\\\"awsregion\\\":\\\"us-west-2\\\",\\\"brand\\\":\\\"TechAudio\\\",\\\"category\\\":\\\"electronics\\\",\\\"description\\\":\\\"Premium noise-cancelling headphones\\\",\\\"name\\\":\\\"EventBridge Test Product\\\",\\\"price\\\":199.99,\\\"sku\\\":\\\"TST-128\\\",\\\"status\\\":\\\"active\\\"}}\",
+    \"EventBusName\": \"template-bus-dev\"
+  }]" \
   --region us-west-2
 
-# Test event for product creation (standard format)
-aws events put-events \
-  --entries '[{
-    "Source": "product-catalog.bff",
-    "DetailType": "Product Published",
-    "Detail": "{\"eventType\":\"product-published\",\"timestamp\":\"2024-01-01T12:00:00Z\",\"product\":{\"id\":\"prod-002\",\"awsregion\":\"us-west-2\",\"brand\":\"TechAudio\",\"category\":\"electronics\",\"description\":\"Premium noise-cancelling headphones with 30-hour battery life\",\"dimensions\":{\"height\":8,\"length\":20,\"width\":18},\"images\":[\"https://example.com/headphones-1.jpg\"],\"lastModifiedBy\":\"f871a310-5051-7002-7c51-bb90ffd7a3e2\",\"name\":\"Wireless Bluetooth Headphones Pro\",\"price\":399.99,\"sku\":\"WBH-2024-002\",\"status\":\"active\",\"stockQuantity\":50,\"tags\":[\"wireless\",\"bluetooth\",\"noise-cancelling\",\"premium\"],\"weight\":0.3}}",
-    "EventBusName": "template-bus-dev"
-  }]' \
-  --region us-west-2
+# This is what lambda recieves
+{
+    "Records": [
+        {
+            "messageId": "032b2ddf-230d-4657-a079-c70a23de2722",
+            "receiptHandle": "AQEBFfVImAjj0lonNpgg5XWOPEOFGNCpUgdGg0KqV0Gijew/JkwVzrn3tjQH6srqwc60k5WK3XWtKo06hXyEbH9GPCLteeD62jyeE0AkkUWWkgq9kYLIZEp6K7gGYLooeW/SVxo86z/DZYwqfR7jxxp/wWIuttsr3wonf67qzZLsmqxzVUGTGYdt0nfxo/nkAQAgMNFVHeKfRppEMrh5ZKuMqhep6horFreMMcdN/PXD+5lxcI5A0nKVcKQLT5LwLzyR5DMWhG4VJhJ44yqphlGgYb7YAqr8yo4rw5ikEbTHataN7pCUa3QrV9qeY+nTZ4GEQuH/gWRTkBhvjdvNwpyuDOI1XoBzzY91VQXQj4vmTiFXBctj/AGX7HCsPbzZJX+tzVDUcZkJHxLCxtayBiMJELOpfzyVgCfsVabk551XCgbjJbEltNFNAVAq+MLGIpHM",
+            "body": "{\"eventType\":\"product-published\",\"productId\":\"test-128\",\"timestamp\":\"2025-08-16T10:25:03Z\",\"product\":{\"id\":\"test-128\",\"awsregion\":\"us-west-2\",\"brand\":\"TechAudio\",\"category\":\"electronics\",\"description\":\"Premium noise-cancelling headphones\",\"name\":\"EventBridge Test Product\",\"price\":199.99,\"sku\":\"TST-128\",\"status\":\"active\"}}",
+            "attributes": {
+                "ApproximateReceiveCount": "1",
+                "SentTimestamp": "1755339904760",
+                "SenderId": "AIDAIE6VAXUQU2DKHA7DK",
+                "ApproximateFirstReceiveTimestamp": "1755339904772"
+            },
+            "messageAttributes": {},
+            "md5OfBody": "0944bba50a6c181bc22ac4c1cde4fc82",
+            "eventSource": "aws:sqs",
+            "eventSourceARN": "arn:aws:sqs:us-west-2:579273601730:template-product-catalog-bff-dev-listener",
+            "awsRegion": "us-west-2"
+        }
+    ]
+}
+
 
 # Test event for product deletion
 aws events put-events \
   --entries '[{
     "Source": "product-catalog.test", 
     "DetailType": "Product Deleted",
-    "Detail": "{\"eventType\":\"product-deleted\",\"productId\":\"test-789\",\"timestamp\":\"2024-01-01T12:10:00Z\"}",
+    "Detail": "{\"eventType\":\"product-deleted\",\"productId\":\"test-125\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}",
     "EventBusName": "template-bus-dev"
   }]' \
   --region us-west-2
@@ -112,7 +169,7 @@ aws sqs get-queue-attributes \
   --attribute-names ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible \
   --region us-west-2
 
-# Check recent Lambda function logs
+# Check recent Lambda function logs (listener function)
 aws logs filter-log-events \
   --log-group-name "/aws/lambda/template-product-catalog-bff-dev-listener" \
   --start-time $(date -v-10M +%s)000 \
@@ -164,6 +221,8 @@ aws kinesis put-record \
 
 ### Event Listener Function
 
+The listener function processes both SQS messages from EventBridge and Kinesis stream records.
+
 ```bash
 # Get listener function configuration
 aws lambda get-function-configuration \
@@ -176,15 +235,44 @@ aws logs filter-log-events \
   --start-time $(date -d "1 hour ago" +%s)000 \
   --region us-west-2
 
-# Invoke listener function manually
+# Invoke listener function manually with SQS event (from EventBridge)
+# ⚠️  IMPORTANT: Use "type" field for Lambda direct invocations, not "eventType"
+# ⚠️  CRITICAL: Use current timestamp to avoid conditional check failures
 aws lambda invoke \
   --function-name template-product-catalog-bff-dev-listener \
-  --payload '{"Records":[{"eventSource":"aws:kinesis","eventName":"aws:kinesis:record","kinesis":{"data":"eyJ0ZXN0IjoidGVzdCJ9"}}]}' \
+  --payload "{\"Records\":[{\"eventSource\":\"aws:sqs\",\"body\":\"{\\\"type\\\":\\\"product-published\\\",\\\"productId\\\":\\\"test-125\\\",\\\"timestamp\\\":$(date +%s)000}\"}]}" \
+  --cli-binary-format raw-in-base64-out \
+  --region us-west-2 \
+  response.json
+
+# Enhanced payload with product data for complete DynamoDB record creation
+aws lambda invoke \
+  --function-name template-product-catalog-bff-dev-listener \
+  --payload "{\"Records\":[{\"eventSource\":\"aws:sqs\",\"body\":\"{\\\"type\\\":\\\"product-published\\\",\\\"productId\\\":\\\"test-124\\\",\\\"timestamp\\\":$(date +%s)000,\\\"product\\\":{\\\"name\\\":\\\"Test Product\\\",\\\"sku\\\":\\\"TST-124\\\",\\\"price\\\":19.99}}\"}]}" \
+  --cli-binary-format raw-in-base64-out \
+  --region us-west-2 \
+  response.json
+
+# Alternative: Using file-based payload with current timestamp
+echo "{\"Records\":[{\"eventSource\":\"aws:sqs\",\"body\":\"{\\\"type\\\":\\\"product-published\\\",\\\"productId\\\":\\\"test-124\\\",\\\"timestamp\\\":$(date +%s)000}\"}]}" > sqs-test-payload.json
+aws lambda invoke \
+  --function-name template-product-catalog-bff-dev-listener \
+  --payload file://sqs-test-payload.json \
+  --region us-west-2 \
+  response.json
+
+# Invoke listener function manually with Kinesis event
+aws lambda invoke \
+  --function-name template-product-catalog-bff-dev-listener \
+  --payload '{"Records":[{"eventSource":"aws:kinesis","eventName":"aws:kinesis:record","kinesis":{"data":"eyJldmVudFR5cGUiOiJwcm9kdWN0LXB1Ymxpc2hlZCIsInByb2R1Y3RJZCI6InRlc3QtMTIzIn0="}}]}' \
+  --cli-binary-format raw-in-base64-out \
   --region us-west-2 \
   response.json
 ```
 
 ### Event Trigger Function
+
+The trigger function processes DynamoDB stream events.
 
 ```bash
 # Get trigger function configuration
@@ -198,10 +286,19 @@ aws logs filter-log-events \
   --start-time $(date -d "1 hour ago" +%s)000 \
   --region us-west-2
 
-# Invoke trigger function manually
+# Invoke trigger function manually with DynamoDB stream event
 aws lambda invoke \
   --function-name template-product-catalog-bff-dev-trigger \
-  --payload '{"Records":[{"eventSource":"aws:dynamodb","eventName":"INSERT","dynamodb":{"Keys":{"pk":{"S":"prod-123"}}}}]}' \
+  --payload '{"Records":[{"eventSource":"aws:dynamodb","eventName":"INSERT","dynamodb":{"Keys":{"pk":{"S":"prod-123"},"sk":{"S":"product"}},"NewImage":{"pk":{"S":"prod-123"},"sk":{"S":"product"},"name":{"S":"Test Product"}}}}]}' \
+  --cli-binary-format raw-in-base64-out \
+  --region us-west-2 \
+  response.json
+
+# Alternative: Using file-based payload
+echo '{"Records":[{"eventSource":"aws:dynamodb","eventName":"INSERT","dynamodb":{"Keys":{"pk":{"S":"prod-123"},"sk":{"S":"product"}},"NewImage":{"pk":{"S":"prod-123"},"sk":{"S":"product"},"name":{"S":"Test Product"}}}}]}' > dynamodb-test-payload.json
+aws lambda invoke \
+  --function-name template-product-catalog-bff-dev-trigger \
+  --payload file://dynamodb-test-payload.json \
   --region us-west-2 \
   response.json
 ```
@@ -272,20 +369,41 @@ Replace `dev` with `np` (non-production) or `prd` (production) for different env
 STAGE="dev"
 EVENT_BUS="template-bus-dev"
 STREAM_NAME="template-stream-dev"
+SQS_QUEUE_NAME="template-product-catalog-bff-dev-listener"
+LAMBDA_PREFIX="template-product-catalog-bff-dev"
+DYNAMO_TABLE="template-product-catalog-bff-dev-entities"
 
 # Non-production environment  
 STAGE="np"
 EVENT_BUS="template-bus-np"
 STREAM_NAME="template-stream-np"
+SQS_QUEUE_NAME="template-product-catalog-bff-np-listener"
+LAMBDA_PREFIX="template-product-catalog-bff-np"
+DYNAMO_TABLE="template-product-catalog-bff-np-entities"
 
 # Production environment
 STAGE="prd"
 EVENT_BUS="template-bus-prd"
 STREAM_NAME="template-stream-prd"
+SQS_QUEUE_NAME="template-product-catalog-bff-prd-listener"
+LAMBDA_PREFIX="template-product-catalog-bff-prd"
+DYNAMO_TABLE="template-product-catalog-bff-prd-entities"
 
-# Example command with environment variables
+# Example commands with environment variables
 aws events list-rules \
   --event-bus-name $EVENT_BUS \
+  --region us-west-2
+
+# Check SQS queue for specific environment
+aws sqs get-queue-attributes \
+  --queue-url https://sqs.us-west-2.amazonaws.com/579273601730/$SQS_QUEUE_NAME \
+  --attribute-names ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible \
+  --region us-west-2
+
+# Check Lambda logs for specific environment
+aws logs filter-log-events \
+  --log-group-name "/aws/lambda/${LAMBDA_PREFIX}-listener" \
+  --start-time $(date -d "1 hour ago" +%s)000 \
   --region us-west-2
 ```
 
@@ -378,7 +496,7 @@ else
 fi
 
 # Check Lambda functions
-for func in listener trigger; do
+for func in listener trigger rest; do
   aws lambda get-function-configuration \
     --function-name template-product-catalog-bff-$STAGE-$func \
     --region $REGION > /dev/null 2>&1
@@ -389,6 +507,29 @@ for func in listener trigger; do
     echo "✗ Lambda function $func is not accessible"
   fi
 done
+
+# Check SQS queue
+aws sqs get-queue-attributes \
+  --queue-url https://sqs.us-west-2.amazonaws.com/579273601730/template-product-catalog-bff-$STAGE-listener \
+  --attribute-names QueueArn \
+  --region $REGION > /dev/null 2>&1
+
+if [ $? -eq 0 ]; then
+  echo "✓ SQS queue is accessible"
+else
+  echo "✗ SQS queue is not accessible"
+fi
+
+# Check DynamoDB table
+aws dynamodb describe-table \
+  --table-name template-product-catalog-bff-$STAGE-entities \
+  --region $REGION > /dev/null 2>&1
+
+if [ $? -eq 0 ]; then
+  echo "✓ DynamoDB table is accessible"
+else
+  echo "✗ DynamoDB table is not accessible"
+fi
 
 echo "Health check complete"
 ```
@@ -435,11 +576,18 @@ aws sqs get-queue-attributes \
   --region us-west-2
 ```
 
-2. Check lambda logs:
+2. Check listener lambda logs:
 ```bash
 aws logs filter-log-events \
   --log-group-name "/aws/lambda/template-product-catalog-bff-dev-listener" \
   --start-time $(($(date +%s) - 600))000 \
+  --region us-west-2
+```
+
+3. Check for DLQ messages if configured:
+```bash
+aws sqs receive-message \
+  --queue-url https://sqs.us-west-2.amazonaws.com/579273601730/template-product-catalog-bff-dev-listener-dlq \
   --region us-west-2
 ```
 
@@ -459,14 +607,137 @@ aws logs filter-log-events \
 }
 ```
 
-#### Issue 3: EventBridge Rule Configuration
-**Current Active Rule**: `template-product-catalog-bff-dev-EventRule-pS3DbAigmcQW`
+#### Issue 3: Lambda Direct Invocation vs EventBridge Events
+**Problem**: Lambda function runs successfully but doesn't create DynamoDB records when invoked directly.
+
+**Root Cause**: Field name mismatch between EventBridge events and Lambda processing.
+
+**Key Difference**:
+- **EventBridge Events**: Use `"eventType"` field (for routing/filtering)
+- **Lambda Processing**: Expects `"type"` field (for aws-lambda-stream processing)
+
+**Solution**:
+```bash
+# ❌ WRONG - Lambda direct invocation with "eventType" (doesn't create records):
+aws lambda invoke \
+  --payload '{"Records":[{"eventSource":"aws:sqs","body":"{\"eventType\":\"product-published\",\"productId\":\"test-125\"}"}]}' \
+  ...
+
+# ✅ CORRECT - Lambda direct invocation with "type" (creates records):
+aws lambda invoke \
+  --payload '{"Records":[{"eventSource":"aws:sqs","body":"{\"type\":\"product-published\",\"productId\":\"test-124\",\"timestamp\":1692097847000}"}]}' \
+  ...
+```
+
+**Verification**:
+```bash
+# Check if DynamoDB record was created
+aws dynamodb scan \
+  --table-name template-product-catalog-bff-dev-entities \
+  --region us-west-2 \
+  --limit 10
+
+# Check for conditional check failures in DynamoDB metrics
+aws cloudwatch get-metric-statistics \
+  --namespace AWS/DynamoDB \
+  --metric-name ConditionalCheckFailedRequests \
+  --dimensions Name=TableName,Value=template-product-catalog-bff-dev-entities \
+  --start-time $(date -d "1 hour ago" --iso-8601) \
+  --end-time $(date --iso-8601) \
+  --period 300 \
+  --statistics Sum \
+  --region us-west-2
+```
+
+#### Issue 4: DynamoDB Conditional Check Failures
+**Problem**: Lambda function runs successfully but DynamoDB record is not created/updated.
+
+**Symptoms**:
+- Lambda logs show successful event processing and `updateResponse` 
+- DynamoDB `ItemCount` remains unchanged
+- DynamoDB metrics show `ConditionalCheckFailedRequests > 0`
+
+**Root Cause**: 
+The system uses timestamp-based conditional expressions to prevent overwriting records with stale data:
+```javascript
+ConditionExpression: "attribute_not_exists(#timestamp) OR #timestamp < :timestamp"
+```
+
+**Common Scenarios**:
+1. **Testing with old timestamps**: Using hardcoded old timestamps (e.g., `1692097847000`)
+2. **Replay attacks**: Attempting to replay old events
+3. **Clock synchronization**: Events arriving out of order
+
+**Solution**:
+```bash
+# ✅ Use current timestamp for testing
+CURRENT_TS=$(date +%s)000
+aws lambda invoke \
+  --payload "{\"Records\":[{\"eventSource\":\"aws:sqs\",\"body\":\"{\\\"type\\\":\\\"product-published\\\",\\\"productId\\\":\\\"test-${CURRENT_TS}\\\",\\\"timestamp\\\":${CURRENT_TS},...\"}]}"
+
+# ✅ Use unique product IDs to avoid conflicts  
+UNIQUE_ID="test-$(date +%s)"
+
+# ✅ Example with consistent naming (test-124 series)
+aws lambda invoke \
+  --payload "{\"Records\":[{\"eventSource\":\"aws:sqs\",\"body\":\"{\\\"type\\\":\\\"product-published\\\",\\\"productId\\\":\\\"test-124\\\",\\\"timestamp\\\":$(date +%s)000,\\\"product\\\":{\\\"name\\\":\\\"Test Product\\\",\\\"sku\\\":\\\"TST-124\\\",\\\"price\\\":19.99}}\"}]}"
+```
+
+**Debugging Steps**:
+1. Check DynamoDB conditional check failures:
+```bash
+aws cloudwatch get-metric-statistics \
+  --namespace AWS/DynamoDB \
+  --metric-name ConditionalCheckFailedRequests \
+  --dimensions Name=TableName,Value=template-product-catalog-bff-dev-entities \
+  --start-time $(date -d "1 hour ago" --iso-8601) \
+  --end-time $(date --iso-8601) \
+  --period 300 --statistics Sum --region us-west-2
+```
+
+2. Check existing record timestamps:
+```bash
+aws dynamodb get-item \
+  --table-name template-product-catalog-bff-dev-entities \
+  --key '{"pk":{"S":"your-product-id"},"sk":{"S":"product"}}' \
+  --region us-west-2
+```
+
+#### Issue 5: EventBridge Rule Configuration
+**Current Active Rule**: `template-product-catalog-bff-dev-EventRule-lq1M5nJakNuC`
 - Pattern: `{"detail":{"eventType":[{"prefix":"product-"}]}}`
-- Target: SQS Queue → Lambda
+- Target: SQS Queue (`template-product-catalog-bff-dev-listener`) → Lambda
 
 **Alternative Rule**: `template-product-catalog-rule-dev`  
 - Pattern: `{"detail-type":["ProductCreated","ProductUpdated","ProductDeleted",...], "source":["product-catalog"]}`
-- Target: **None configured** (this is why it doesn't work)
+- Target: **None configured** (this is why it doesn't work by itself)
+
+**Resource Configuration Summary**:
+- **EventBridge Bus**: `template-bus-dev`
+- **Kinesis Stream**: `template-stream-dev`
+- **SQS Queue**: `template-product-catalog-bff-dev-listener`
+- **DynamoDB Table**: `template-product-catalog-bff-dev-entities`
+- **Lambda Functions**: 
+  - `template-product-catalog-bff-dev-listener` (processes SQS and Kinesis events)
+  - `template-product-catalog-bff-dev-trigger` (processes DynamoDB stream events)
+  - `template-product-catalog-bff-dev-rest` (REST API handler)
+
+## Event Structure Reference
+
+### Important: EventBridge vs Lambda Event Formats
+
+**🔍 Key Insight**: The system uses different field names depending on the entry point:
+
+| Entry Point | Field Name | Purpose | Example |
+|-------------|------------|---------|---------|
+| **EventBridge** | `eventType` | Event routing/filtering | `{"eventType": "product-published"}` |
+| **Lambda Direct** | `type` | Event processing | `{"type": "product-published"}` |
+
+**Why the difference?**
+- EventBridge rules use `eventType` for pattern matching and routing
+- The `aws-lambda-stream` library expects `type` for internal processing
+- When events come through EventBridge → SQS → Lambda, the transformation happens automatically
+- When invoking Lambda directly, you must use the `type` field
 
 ## Common Event Patterns
 
@@ -530,6 +801,45 @@ aws logs filter-log-events \
 }
 ```
 
+**For Lambda Direct Invocations** (use `type` field instead of `eventType`):
+
+```json
+// Product Published Event (Lambda Direct)
+{
+  "type": "product-published",
+  "productId": "test-124",
+  "timestamp": 1755332700000, // ⚠️ Use current timestamp: $(date +%s)000
+  "product": {
+    "name": "Test Product",
+    "sku": "TST-124", 
+    "price": 19.99,
+    "category": "electronics"
+  }
+}
+
+// Product Updated Event (Lambda Direct)
+{
+  "type": "product-draft",
+  "productId": "prod-456", 
+  "timestamp": 1755332700000, // ⚠️ Use current timestamp: $(date +%s)000
+  "product": {
+    "name": "Updated Product",
+    "price": 89.99
+  }
+}
+
+// Product Inventory Updated Event (Lambda Direct)
+{
+  "type": "product-inventory-updated",
+  "productId": "prod-789",
+  "timestamp": 1755332700000, // ⚠️ Use current timestamp: $(date +%s)000
+  "inventory": {
+    "old": 50,
+    "new": 25
+  }
+}
+```
+
 **Event Types That Match Listener Rules**:
 - **Rule m1**: `product-draft`, `product-published`, `product-deactivated`, `product-out-of-stock`, `product-discontinued`, `product-deleted`
 - **Rule m2**: `product-inventory-updated`
@@ -543,7 +853,7 @@ aws events put-events \
   --entries '[{
     "Source": "product-catalog",
     "DetailType": "Product Published",
-    "Detail": "{\"eventType\":\"product-published\",\"productId\":\"prod-123\",\"name\":\"Test Product\"}",
+    "Detail": "{\"eventType\":\"product-published\",\"productId\":\"prod-124\",\"name\":\"Test Product\"}",
     "EventBusName": "template-bus-dev"
   }]' \
   --region us-west-2
@@ -567,6 +877,79 @@ aws events put-events \
     "EventBusName": "template-bus-dev"
   }]' \
   --region us-west-2
+```
+
+## Current Deployed Infrastructure (December 2024)
+
+Based on the deployed stack `template-product-catalog-bff-dev`, the following resources are currently active:
+
+### EventBridge Resources
+- **Bus Name**: `template-bus-dev`
+- **Active Rule**: `template-product-catalog-bff-dev-EventRule-lq1M5nJakNuC`
+  - Pattern: `{"detail":{"eventType":[{"prefix":"product-"}]}}`
+  - Target: SQS Queue → Lambda Listener
+
+### Kinesis Resources
+- **Stream Name**: `template-stream-dev`
+- **Consumer**: Lambda Listener Function with batch filtering
+
+### SQS Resources
+- **Queue URL**: `https://sqs.us-west-2.amazonaws.com/579273601730/template-product-catalog-bff-dev-listener`
+- **Queue Name**: `template-product-catalog-bff-dev-listener`
+
+### Lambda Functions
+1. **Listener Function**: `template-product-catalog-bff-dev-listener`
+   - Processes SQS messages from EventBridge
+   - Processes Kinesis stream records
+   - Log Group: `/aws/lambda/template-product-catalog-bff-dev-listener`
+
+2. **Trigger Function**: `template-product-catalog-bff-dev-trigger`
+   - Processes DynamoDB stream events
+   - Log Group: `/aws/lambda/template-product-catalog-bff-dev-trigger`
+
+3. **REST API Function**: `template-product-catalog-bff-dev-rest`
+   - Handles HTTP API requests
+   - Log Group: `/aws/lambda/template-product-catalog-bff-dev-rest`
+
+### DynamoDB Resources
+- **Table Name**: `template-product-catalog-bff-dev-entities`
+- **Stream**: Enabled (triggers the trigger function)
+
+### API Gateway Resources
+- **REST API ID**: `0opd09aij5`
+- **Deployment**: `rb1cy8` 
+- **Cognito Authorizer**: `as42pn`
+
+### Quick Resource Verification
+```bash
+# Verify all current resources exist
+STAGE="dev"
+REGION="us-west-2"
+
+# Check EventBridge bus
+aws events describe-event-bus --name template-bus-$STAGE --region $REGION
+
+# Check Kinesis stream  
+aws kinesis describe-stream --stream-name template-stream-$STAGE --region $REGION
+
+# Check SQS queue
+aws sqs get-queue-attributes \
+  --queue-url https://sqs.us-west-2.amazonaws.com/579273601730/template-product-catalog-bff-$STAGE-listener \
+  --attribute-names All --region $REGION
+
+# Check Lambda functions
+aws lambda list-functions \
+  --function-version ALL \
+  --region $REGION \
+  --query 'Functions[?starts_with(FunctionName, `template-product-catalog-bff-'$STAGE'`)].FunctionName'
+
+# Check DynamoDB table
+aws dynamodb describe-table \
+  --table-name template-product-catalog-bff-$STAGE-entities \
+  --region $REGION
+
+# Check API Gateway
+aws apigateway get-rest-api --rest-api-id 0opd09aij5 --region $REGION
 ```
 
 For API management and product operations, see [API.md](./API.md).

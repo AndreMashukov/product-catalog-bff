@@ -32,7 +32,7 @@ Frontend Clients                    BFF Layer                    Backend Service
 │    App      │                │  • Validation   │◄───────────►┌──────────────┐
 └─────────────┘                └─────────────────┘             │   Pricing    │
                                                                │   Service    │
-    One API for all                 Unified Interface            └──────────────┘
+    One API for all                 Unified Interface          └──────────────┘
 ```
 
 #### Diagram 2: Request Transformation Process
