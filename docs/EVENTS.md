@@ -148,14 +148,15 @@ aws events put-events \
 
 
 # Test event for product deletion
-aws events put-events \
-  --entries '[{
-    "Source": "product-catalog.test", 
+TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ) && \
+aws events put-events --entries '[
+  {
+    "Source": "product-catalog.test",
     "DetailType": "Product Deleted",
-    "Detail": "{\"eventType\":\"product-deleted\",\"productId\":\"test-125\",\"timestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}",
+    "Detail": "{\"eventType\":\"product-deleted\",\"type\":\"product-deleted\",\"productId\":\"test-128\",\"timestamp\":\"'$TIMESTAMP'\"}",
     "EventBusName": "template-bus-dev"
-  }]' \
-  --region us-west-2
+  }
+]' --region us-west-2
 
 
 
