@@ -1,0 +1,54 @@
+resources:
+  Resources:
+    # CloudWatch Alarm for Dead Letter Queue
+    ListenerDLQAlarm:
+      Type: AWS::CloudWatch::Alarm
+      Properties:
+        AlarmName: ${self:service}-${opt:stage}-listener-dlq-messages
+        AlarmDescription: Alarm when messages are sent to the listener DLQ
+        MetricName: ApproximateNumberOfMessages
+        Namespace: AWS/SQS
+        Statistic: Average
+        Period: 300  # 5 minutes
+        EvaluationPeriods: 1
+        Threshold: 0
+        ComparisonOperator: GreaterThanThreshold
+        Dimensions:
+          - Name: QueueName
+            Value: !GetAtt ListenerDLQ.QueueName
+        AlarmActions:
+          - !Ref ListenerDLQTopic
+        TreatMissingData: notBreaching
+
+    # SNS Topic for DLQ alerts
+    ListenerDLQTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: ${self:service}-${opt:stage}-listener-dlq-alerts
+        DisplayName: Product Catalog BFF Listener DLQ Alerts
+
+    # CloudWatch Alarm for Lambda errors
+    ListenerLambdaErrorAlarm:
+      Type: AWS::CloudWatch::Alarm
+      Properties:
+        AlarmName: ${self:service}-${opt:stage}-listener-lambda-errors
+        AlarmDescription: Alarm when Lambda function has errors
+        MetricName: Errors
+        Namespace: AWS/Lambda
+        Statistic: Sum
+        Period: 300  # 5 minutes
+        EvaluationPeriods: 2
+        Threshold: 5
+        ComparisonOperator: GreaterThanOrEqualToThreshold
+        Dimensions:
+          - Name: FunctionName
+            Value: ${self:service}-${opt:stage}-listener
+        AlarmActions:
+          - !Ref ListenerDLQTopic
+        TreatMissingData: notBreaching
+
+  Outputs:
+    ListenerDLQTopic:
+      Value: !Ref ListenerDLQTopic
+    ListenerDLQTopicArn:
+      Value: !Ref ListenerDLQTopic

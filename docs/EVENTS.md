@@ -119,7 +119,7 @@ aws events put-events \
   --entries "[{
     \"Source\": \"product-catalog.bff\",
     \"DetailType\": \"Product Published\",
-    \"Detail\": \"{\\\"eventType\\\":\\\"product-published\\\",\\\"productId\\\":\\\"test-128\\\",\\\"timestamp\\\":\\\"${TIMESTAMP}\\\",\\\"product\\\":{\\\"id\\\":\\\"test-128\\\",\\\"awsregion\\\":\\\"us-west-2\\\",\\\"brand\\\":\\\"TechAudio\\\",\\\"category\\\":\\\"electronics\\\",\\\"description\\\":\\\"Premium noise-cancelling headphones\\\",\\\"name\\\":\\\"EventBridge Test Product\\\",\\\"price\\\":199.99,\\\"sku\\\":\\\"TST-128\\\",\\\"status\\\":\\\"active\\\"}}\",
+    \"Detail\": \"{\\\"eventType\\\":\\\"product-published\\\",\\\"type\\\":\\\"product-published\\\",\\\"productId\\\":\\\"test-129\\\",\\\"timestamp\\\":\\\"${TIMESTAMP}\\\",\\\"product\\\":{\\\"id\\\":\\\"test-129\\\",\\\"awsregion\\\":\\\"us-west-2\\\",\\\"brand\\\":\\\"TechAudio\\\",\\\"category\\\":\\\"electronics\\\",\\\"description\\\":\\\"Premium noise-cancelling headphones\\\",\\\"name\\\":\\\"EventBridge Test Product\\\",\\\"price\\\":199.99,\\\"sku\\\":\\\"TST-129\\\",\\\"status\\\":\\\"active\\\"}}\",
     \"EventBusName\": \"template-bus-dev\"
   }]" \
   --region us-west-2
@@ -153,7 +153,7 @@ aws events put-events --entries '[
   {
     "Source": "product-catalog.test",
     "DetailType": "Product Deleted",
-    "Detail": "{\"eventType\":\"product-deleted\",\"type\":\"product-deleted\",\"productId\":\"test-128\",\"timestamp\":\"'$TIMESTAMP'\"}",
+    "Detail": "{\"eventType\":\"product-deleted\",\"type\":\"product-deleted\",\"productId\":\"test-129\",\"timestamp\":\"'$TIMESTAMP'\"}",
     "EventBusName": "template-bus-dev"
   }
 ]' --region us-west-2

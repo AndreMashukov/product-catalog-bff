@@ -44,9 +44,29 @@ export const handle = async (event, context, int = {}) => {
   debug('event: %j', event);
   debug('context: %j', context);
 
-  // const options = await getSecrets(OPTIONS);
+  try {
+    // const options = await getSecrets(OPTIONS);
 
-  return new Handler({ ...OPTIONS, ...int })
-    .handle(event)
-    .through(toPromise);
+    const result = await new Handler({ ...OPTIONS, ...int })
+      .handle(event)
+      .through(toPromise);
+
+    debug('Processing completed successfully: %j', result);
+    return result;
+  } catch (error) {
+    console.error('Error processing SQS message:', error);
+
+    // Check if this is a parsing/malformed message error
+    if (error.message && (
+      error.message.includes('JSON')
+      || error.message.includes('parse')
+      || error.message.includes('malformed')
+      || error.message.includes('invalid')
+    )) {
+      console.error('Malformed message detected, will be sent to DLQ after max retries');
+    }
+
+    // Re-throw the error to trigger SQS retry mechanism
+    throw error;
+  }
 };

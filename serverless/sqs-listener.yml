@@ -1,9 +1,21 @@
 resources:
   Resources:
+    ListenerDLQ:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:service}-${opt:stage}-listener-dlq
+        MessageRetentionPeriod: 1209600  # 14 days (longer than main queue)
+        # KmsMasterKeyId: alias/aws/sqs
+
     ListenerQueue:
       Type: AWS::SQS::Queue
       Properties:
         QueueName: ${self:service}-${opt:stage}-listener
+        VisibilityTimeout: 180  # 3 minutes (6x Lambda timeout)
+        MessageRetentionPeriod: 345600  # 4 days
+        RedrivePolicy:
+          deadLetterTargetArn: !GetAtt ListenerDLQ.Arn
+          maxReceiveCount: 3  # After 3 failures, send to DLQ
         # KmsMasterKeyId: alias/aws/sqs
         # https://stackoverflow.com/questions/63808647/aws-forward-event-bridge-event-to-encrypted-sqs-amazon-managed-key
 
@@ -44,3 +56,8 @@ resources:
     ListenerQueue:
       Value:
         Ref: ListenerQueue
+    ListenerDLQ:
+      Value:
+        Ref: ListenerDLQ
+    ListenerDLQArn:
+      Value: !GetAtt ListenerDLQ.Arn

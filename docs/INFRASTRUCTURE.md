@@ -7,6 +7,7 @@ This repository contains the Serverless Framework configuration for the Product 
 - **Product Catalog BFF**: Main service with REST API and event handling capabilities
 - **Cognito Resources**: Authentication and user management
 - **Event Hub**: EventBridge bus and Kinesis stream for event handling
+- **Dead Letter Queue**: SQS DLQ for handling failed message processing with CloudWatch monitoring
 
 ## Deployment Instructions
 
