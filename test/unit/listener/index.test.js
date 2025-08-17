@@ -41,7 +41,7 @@ describe('listener/index.js', () => {
     }
   });
 
-  it('should transform EventBridge events with eventType to type field', (done) => {
+  it('should handle EventBridge events with eventType field', (done) => {
     const eventBridgeEvent = {
       Records: [
         {
@@ -64,34 +64,7 @@ describe('listener/index.js', () => {
       .handle(eventBridgeEvent)
       .collect()
       .tap((collected) => {
-        // The event should be processed successfully with the transformed type field
-        expect(collected).to.be.an('array');
-        // Even if no rules match in this test context, the transformation should have occurred
-        // and the handler should not throw an error due to missing 'type' field
-      })
-      .done(done);
-  });
-
-  it('should preserve existing type field when both type and eventType are present', (done) => {
-    const mixedEvent = {
-      Records: [
-        {
-          eventSource: 'aws:sqs',
-          body: JSON.stringify({
-            type: 'product-draft',
-            eventType: 'product-published',
-            productId: 'test-124',
-            timestamp: 1692097847000,
-          }),
-        },
-      ],
-    };
-
-    new Handler()
-      .handle(mixedEvent)
-      .collect()
-      .tap((collected) => {
-        // Should not transform when type field already exists
+        // The event should be processed successfully using eventType field directly
         expect(collected).to.be.an('array');
       })
       .done(done);

@@ -200,17 +200,11 @@ export const toUpdateRequest = (uow) => {
     eventTimestamp = new Date(eventTimestamp).getTime();
   }
 
-  // Determine status from event type or existing status
+  // Determine status from eventType or existing status
   let { status } = productData;
-
-  // Get the event type from either 'type' or 'eventType' field
-  const eventType = uow.event.type || uow.event.eventType;
-  if (uow.event.type === 'thing-product' && uow.event.eventType) {
-    // For thing-product events, use eventType to determine status
+  if (uow.event.eventType) {
+    // Use eventType to determine status
     status = EVENT_STATUS_MAP[uow.event.eventType] || productData.status;
-  } else if (eventType) {
-    // For product-* events, use the event type (either from 'type' or 'eventType' field)
-    status = EVENT_STATUS_MAP[eventType] || productData.status;
   }
 
   return {
@@ -224,7 +218,7 @@ export const toUpdateRequest = (uow) => {
       discriminator: DISCRIMINATOR,
       lastModifiedBy: productData.lastModifiedBy || 'system',
       timestamp: eventTimestamp,
-      deleted: (uow.event.type === 'product-deleted' || uow.event.eventType === 'product-deleted') ? true : null,
+      deleted: uow.event.eventType === 'product-deleted' ? true : null,
       latched: true,
       ttl: ttl(eventTimestamp, 365),
       awsregion: process.env.AWS_REGION || productData.awsregion,
